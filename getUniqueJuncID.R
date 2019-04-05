@@ -10,6 +10,7 @@ plotMeanAcrossTissuesBrainBlood <- function(data="~/R/splicing_project/SplicingP
                                             savePlot = T,
                                             linesPot = T,
                                             boxPlot = T,
+                                            boxPlotAllTissues = T,
                                             barPlot = T,
                                             zoomed = F,
                                             meanMinMax = T) {
@@ -139,6 +140,31 @@ plotMeanAcrossTissuesBrainBlood <- function(data="~/R/splicing_project/SplicingP
         dev.off()
     }
   }
+  if(boxPlotAllTissues){
+    dir.create(file.path(paste0(plotsFolderName,"/boxPlot")), showWarnings = T)
+    
+    
+    tissueValues <-list()
+    allColours<-NULL
+    for(tissue in names(tissuePoints)){
+      tissueValues[[tissue]] <- tissuePoints[[tissue]][69][[1]]
+      if(str_detect(tolower(tissue), "brain")){
+        allColours <- c(allColours,"yellow")
+      }
+      else if(str_detect(tolower(tissue), "blood")){
+        allColours <- c(allColours,"blue")
+      }
+      else
+        allColours <- c(allColours,"red")
+    }
+    
+    if(savePlot)
+      pdf(paste0(plotsFolderName,"/boxPlot/StatsAcrossIndividuals-", nameFile,"-BoxPlot.pdf"))
+    boxplot(tissueValues,  ylim=c(0,4),main = "StatsAcrossIndividuals - All tissues\ncutoff=69individuals",las=2, ylab="% unique juncID", col=allColours)
+    legend(x = 3,3, legend=c("brain","blood","other"), lty = 13, col=c("yellow","blue","red"))
+    if(savePlot)
+      dev.off()
+  }
   if(barPlot){
     percentage <- NULL
     minLength<- 1000
@@ -166,7 +192,6 @@ plotMeanAcrossTissuesBrainBlood <- function(data="~/R/splicing_project/SplicingP
     #if(savePlot)
     #  export(p, file = paste0(plotsFolderName,"/Mean-UniquenessPercentage-Counts3-",nameFile,".pdf"))
   }
-  
   if(meanMinMax){
     for(tissue in names(mean)){
       
@@ -198,7 +223,7 @@ plotHistograms <- function(allJunctionsData="~/R/splicing_project/SplicingProjec
                            folderName = "~/R/splicing_project/SplicingProject/Results/Graphics/AllTissues/GreaterThan3/Adjusted/",
                            generatePlot = T,
                            isMinimum = T,
-                           savePlot = T,
+                           savePlot = F,
                            saveResults = T){
 
   #############################################
@@ -267,208 +292,210 @@ plotHistograms <- function(allJunctionsData="~/R/splicing_project/SplicingProjec
   }
   if(generatePlot){
     for(tissue in names(all.nonunique)){
-      if(savePlot){
-        dir.create(file.path(folderName), showWarnings = FALSE)
-        if(isMinimum)
-          pdf(paste0(folderName,"/Histogram-ConcatenatedData-Minimum-",tissue,".pdf"))
-        else
-          pdf(paste0(folderName,"/Histogram-ConcatenatedData-Maximum-",tissue,".pdf"))
-      }
-      
-      plot(density(log(all.nonunique[[tissue]])), col = "black", type = "l",  main = paste0("Concatenated Counts Across Individuals - ",tissue), xlab = "log(counts) concatenated across all individuals")
-      lines(density(log(all.unique[[tissue]])), type = "l", col = "red")
-      
-      t<-ks.test(all.nonunique[[tissue]],all.unique[[tissue]])
-      text(x = -8, y = 0.6, paste0("p-value = ",t$p.value))
-      legend(x = -8, y = 0.5, legend = c("non.unique junctions", "unique junctions"), lty = 1, col=c("black", "red"))
-      
-      if(savePlot)
-        dev.off()
-    }
-  }
-}
-
-
-getRandomizedDataPerPersonAndTissue <- function(data="~/R/splicing_project/SplicingProject/Results/uniqueJunctions_Randomized_GT3.rda",
-                                                    saveResults = T){
-  
- 
-  
-  ##################################################################################################################################
-  ##################################################################################################################################
-  
-  allRandomizedData <-readRDS(file = data)
-  randomizedIndividualList <- allRandomizedData$randomizedIndividualList
-  
-  firstRandomList <- randomizedIndividualList[[1]]
-  randomizedIndividualList <- randomizedIndividualList[-1]
-  
-  points <- list()
-
-  for(person in names(firstRandomList)){
-    myperson <- firstRandomList[[person]]
-    points[[person]] <- list()
-    print(person)
-    for(tissue in names(myperson)){
-      i<-1
-      points[[person]][[tissue]] <- list()
-    
-        
-      dataToMean <- myperson[[tissue]]
-      for(item in 1:length(dataToMean)){
-        if(item<=length(points[[person]][[tissue]]))
-          points[[person]][[tissue]][[item]] <- c(points[[person]][[tissue]][[item]],dataToMean[[item]]) 
-        else
-          points[[person]][[tissue]][[item]] <- dataToMean[[item]]
-      }
-      
-      for(randomList in randomizedIndividualList){
-        
-        personN <- randomList[[person]]
-        dataToMean <- personN[[tissue]]
-       
-        for(item in 1:length(dataToMean)){
-          if(item<=length(points[[person]][[tissue]]))
-            points[[person]][[tissue]][[item]] <- c(points[[person]][[tissue]][[item]],dataToMean[[item]]) 
+      if(str_detect(tolower(tissue), "frontal")){
+        if(savePlot){
+          dir.create(file.path(folderName), showWarnings = FALSE)
+          if(isMinimum)
+            pdf(paste0(folderName,"/Histogram-ConcatenatedData-Minimum-",tissue,".pdf"))
           else
-            points[[person]][[tissue]][[item]] <- dataToMean[[item]]
+            pdf(paste0(folderName,"/Histogram-ConcatenatedData-Maximum-",tissue,".pdf"))
         }
+        
+        plot(density(log(all.unique[[tissue]])), col = "red", type = "l",  main = paste0("Concatenated Counts Across Individuals - ",tissue,"\nUsing log()function"), xlab = "log(counts) concatenated across all individuals in frontal cortex")
+        lines(density(log(all.nonunique[[tissue]])), type = "l", col = "black")
+        
+        t<-ks.test(all.nonunique[[tissue]],all.unique[[tissue]])
+        text(x = -9.5, y = 3.2, paste0("ks.test p-value = ",t$p.value))
+        legend(x = -10, y = 4, legend = c("non.unique junctions", "unique junctions"), lty = 1, col=c("black", "red"))
+        
+        if(savePlot)
+          dev.off()
       }
     }
   }
-  #data <- list(randomizedIndividualList=dataRandomizedPeople)
-  if(saveResults)
-    saveRDS(points, "~/R/splicing_project/SplicingProject/Results/randomizedJunctionsJoinedPerPersonAndTissue.rda")
 }
 
-plotMeanRandomizedUniqueJunctionAllTissues <- function(data="~/R/splicing_project/SplicingProject/Results/randomizedJunctionsJoinedPerPersonAndTissue.rda",
-                                                       saveResults = T){
-  
-  
-  randomizedData <-readRDS(file = data)
-  
-  #######################################################
-  ########### GET THE MEAN PER TISSUE ###################
-  #######################################################
-  finalMeanData<-list()
-  
-  for(person in names(randomizedData)){
-    finalMeanData[[person]]<-list()
-    print(person)
 
-    for(tissue in names(randomizedData[[person]])){
-      
-      meanDataPerTissue <-NULL
-      for(item in 1:length(randomizedData[[person]][[tissue]])){
-        meanDataPerTissue <- c(meanDataPerTissue, mean(randomizedData[[person]][[tissue]][[item]]))
-      }
-      finalMeanData[[person]][[tissue]] <- meanDataPerTissue
-      
-    }
-
-  }
-  # uniqueJunction <- uniqueJunctions$uniqueJuncID
-  if(saveResults)
-    saveRDS(finalMeanData, "~/R/splicing_project/SplicingProject/Results/randomizedJunctionsMeanPerTissue.rda")
-  
-  
-  
-  
-  ###############################################################
-  ########### GET THE MEAN ACROSS INDIVIDUALS ###################
-  ###############################################################
-  
-
-  
-  finalMeanData <-readRDS(file = "~/R/splicing_project/SplicingProject/Results/randomizedJunctionsMeanPerTissue.rda")
-  
-  ############## GET TISSUES' NAME ######################
-  query <- dbSendQuery(con, "select * from sqlite_master;")
-  all_tables <- dbFetch(query)
-  dbClearResult(query)
-  table_names <- all_tables$name
-  gtex_table <- table_names[56]
-  table_names <- table_names[-1] #Delete "Junc_coordinates" name-table
-  table_names <- table_names[-55] #Delete "GTEX" name-table
-
-  ############## GET MEAN ACROSS INDIVIDUALS ######################
-  tissuePoints <- list()
-  points <- list()
-
-  for(tissue in table_names){
-    if(!str_detect(tolower(tissue), "cells|testis|vagina|ovary|uterus|prostate|cervix|bladder|fallopian|breast")){
-      points <- list()
-      for(person in names(finalMeanData)){
-        print(person)
-
-        if(length(finalMeanData[[person]][[tissue]]) > 0){
-
-          for(item in 1:length(finalMeanData[[person]][[tissue]])){
-
-            if(item<=length(points)){
-              points[[item]] <- c(points[[item]],finalMeanData[[person]][[tissue]][[item]])
-            }
-            else
-              points[[item]] <- finalMeanData[[person]][[tissue]][[item]]
-
-          }
-        }
-      }
-      if(length(points)>0)
-      tissuePoints[[tissue]] <- points
-    }
-  }
-  mean<-list()
-  for(tissue in names(tissuePoints)){
-
-  
-    for(item in 1:length(tissuePoints[[tissue]])){
-      if(tissue %in% names(mean))
-        mean[[tissue]] <- c(mean[[tissue]],mean(tissuePoints[[tissue]][[item]]))
-      else
-        mean[[tissue]] <- mean(tissuePoints[[tissue]][[item]])
-    }
-  }
-  
-  
-  
-  color <- c("red","blue","green","purple","orange","pink","brown", "grey", "black", "grey",'chartreuse3', "deeppink", 'cornflowerblue', 
-             'darkgoldenrod1', 'peachpuff3','mediumorchid2', 'turquoise3', 'wheat4', 'slategray2',"salmon4","tomato","deepskyblue3","brown4",
-             "greenyellow")
-  tissues<-NULL
-  tissuesColour<-NULL
-  i<-1
-  pdf(paste0("~/R/splicing_project/SplicingProject/Results/Graphics/AllTissues/GreaterThan3/Randomized/ALLTISSUES-AllIndividuals-RandomizedMean-ZOOMED.pdf"))
-  for(tissue in names(mean))
-  {
-    if(str_detect(tolower(tissue), "brain"))
-      tissueColor <- "red"
-    else if(str_detect(tolower(tissue), "blood"))
-      tissueColor <- "blue"
-    else
-      tissueColor <- "black"
-    
-    
-    #if(str_detect(tolower(tissue), "brain") || str_detect(tolower(tissue), "blood")){
-      tissuesColour <- c(tissuesColour,tissueColor)
-      tissues<-c(tissues,tissue)
-      if(i==1){
-        
-        #ylim=c(0,5000), xlim = c(0,150),
-        plot(unlist(mean[[tissue]], use.names = F), type = "l",  ylim=c(0,6000), xlim = c(0,150),col=tissueColor,xlab="individuals", ylab="Mean unique juncID across randomized indiv", main = paste0("AllTissues - All Individuals - Randomized Mean"))
-        
-      }
-      else{
-        print(mean[[tissue]])
-        lines(unlist(mean[[tissue]], use.names = F), type = "l", col=tissueColor)
-      }
-      i<-i+1
-    #}
-    
-  }
-  op <- par(cex = 0.5)
-  legend(x = 100, y = 6000, legend = tissues, lty = 1, col = tissuesColour)
-  dev.off()
-}
-
+# getRandomizedDataPerPersonAndTissue <- function(data="~/R/splicing_project/SplicingProject/Results/uniqueJunctions_Randomized_GT3.rda",
+#                                                     saveResults = T){
+#   
+#  
+#   
+#   ##################################################################################################################################
+#   ##################################################################################################################################
+#   
+#   allRandomizedData <-readRDS(file = data)
+#   randomizedIndividualList <- allRandomizedData$randomizedIndividualList
+#   
+#   firstRandomList <- randomizedIndividualList[[1]]
+#   randomizedIndividualList <- randomizedIndividualList[-1]
+#   
+#   points <- list()
+# 
+#   for(person in names(firstRandomList)){
+#     myperson <- firstRandomList[[person]]
+#     points[[person]] <- list()
+#     print(person)
+#     for(tissue in names(myperson)){
+#       i<-1
+#       points[[person]][[tissue]] <- list()
+#     
+#         
+#       dataToMean <- myperson[[tissue]]
+#       for(item in 1:length(dataToMean)){
+#         if(item<=length(points[[person]][[tissue]]))
+#           points[[person]][[tissue]][[item]] <- c(points[[person]][[tissue]][[item]],dataToMean[[item]]) 
+#         else
+#           points[[person]][[tissue]][[item]] <- dataToMean[[item]]
+#       }
+#       
+#       for(randomList in randomizedIndividualList){
+#         
+#         personN <- randomList[[person]]
+#         dataToMean <- personN[[tissue]]
+#        
+#         for(item in 1:length(dataToMean)){
+#           if(item<=length(points[[person]][[tissue]]))
+#             points[[person]][[tissue]][[item]] <- c(points[[person]][[tissue]][[item]],dataToMean[[item]]) 
+#           else
+#             points[[person]][[tissue]][[item]] <- dataToMean[[item]]
+#         }
+#       }
+#     }
+#   }
+#   #data <- list(randomizedIndividualList=dataRandomizedPeople)
+#   if(saveResults)
+#     saveRDS(points, "~/R/splicing_project/SplicingProject/Results/randomizedJunctionsJoinedPerPersonAndTissue.rda")
+# }
+# 
+# plotMeanRandomizedUniqueJunctionAllTissues <- function(data="~/R/splicing_project/SplicingProject/Results/randomizedJunctionsJoinedPerPersonAndTissue.rda",
+#                                                        saveResults = T){
+#   
+#   
+#   randomizedData <-readRDS(file = data)
+#   
+#   #######################################################
+#   ########### GET THE MEAN PER TISSUE ###################
+#   #######################################################
+#   finalMeanData<-list()
+#   
+#   for(person in names(randomizedData)){
+#     finalMeanData[[person]]<-list()
+#     print(person)
+# 
+#     for(tissue in names(randomizedData[[person]])){
+#       
+#       meanDataPerTissue <-NULL
+#       for(item in 1:length(randomizedData[[person]][[tissue]])){
+#         meanDataPerTissue <- c(meanDataPerTissue, mean(randomizedData[[person]][[tissue]][[item]]))
+#       }
+#       finalMeanData[[person]][[tissue]] <- meanDataPerTissue
+#       
+#     }
+# 
+#   }
+#   # uniqueJunction <- uniqueJunctions$uniqueJuncID
+#   if(saveResults)
+#     saveRDS(finalMeanData, "~/R/splicing_project/SplicingProject/Results/randomizedJunctionsMeanPerTissue.rda")
+#   
+#   
+#   
+#   
+#   ###############################################################
+#   ########### GET THE MEAN ACROSS INDIVIDUALS ###################
+#   ###############################################################
+#   
+# 
+#   
+#   finalMeanData <-readRDS(file = "~/R/splicing_project/SplicingProject/Results/randomizedJunctionsMeanPerTissue.rda")
+#   
+#   ############## GET TISSUES' NAME ######################
+#   query <- dbSendQuery(con, "select * from sqlite_master;")
+#   all_tables <- dbFetch(query)
+#   dbClearResult(query)
+#   table_names <- all_tables$name
+#   gtex_table <- table_names[56]
+#   table_names <- table_names[-1] #Delete "Junc_coordinates" name-table
+#   table_names <- table_names[-55] #Delete "GTEX" name-table
+# 
+#   ############## GET MEAN ACROSS INDIVIDUALS ######################
+#   tissuePoints <- list()
+#   points <- list()
+# 
+#   for(tissue in table_names){
+#     if(!str_detect(tolower(tissue), "cells|testis|vagina|ovary|uterus|prostate|cervix|bladder|fallopian|breast")){
+#       points <- list()
+#       for(person in names(finalMeanData)){
+#         print(person)
+# 
+#         if(length(finalMeanData[[person]][[tissue]]) > 0){
+# 
+#           for(item in 1:length(finalMeanData[[person]][[tissue]])){
+# 
+#             if(item<=length(points)){
+#               points[[item]] <- c(points[[item]],finalMeanData[[person]][[tissue]][[item]])
+#             }
+#             else
+#               points[[item]] <- finalMeanData[[person]][[tissue]][[item]]
+# 
+#           }
+#         }
+#       }
+#       if(length(points)>0)
+#       tissuePoints[[tissue]] <- points
+#     }
+#   }
+#   mean<-list()
+#   for(tissue in names(tissuePoints)){
+# 
+#   
+#     for(item in 1:length(tissuePoints[[tissue]])){
+#       if(tissue %in% names(mean))
+#         mean[[tissue]] <- c(mean[[tissue]],mean(tissuePoints[[tissue]][[item]]))
+#       else
+#         mean[[tissue]] <- mean(tissuePoints[[tissue]][[item]])
+#     }
+#   }
+#   
+#   
+#   
+#   color <- c("red","blue","green","purple","orange","pink","brown", "grey", "black", "grey",'chartreuse3', "deeppink", 'cornflowerblue', 
+#              'darkgoldenrod1', 'peachpuff3','mediumorchid2', 'turquoise3', 'wheat4', 'slategray2',"salmon4","tomato","deepskyblue3","brown4",
+#              "greenyellow")
+#   tissues<-NULL
+#   tissuesColour<-NULL
+#   i<-1
+#   pdf(paste0("~/R/splicing_project/SplicingProject/Results/Graphics/AllTissues/GreaterThan3/Randomized/ALLTISSUES-AllIndividuals-RandomizedMean-ZOOMED.pdf"))
+#   for(tissue in names(mean))
+#   {
+#     if(str_detect(tolower(tissue), "brain"))
+#       tissueColor <- "red"
+#     else if(str_detect(tolower(tissue), "blood"))
+#       tissueColor <- "blue"
+#     else
+#       tissueColor <- "black"
+#     
+#     
+#     #if(str_detect(tolower(tissue), "brain") || str_detect(tolower(tissue), "blood")){
+#       tissuesColour <- c(tissuesColour,tissueColor)
+#       tissues<-c(tissues,tissue)
+#       if(i==1){
+#         
+#         #ylim=c(0,5000), xlim = c(0,150),
+#         plot(unlist(mean[[tissue]], use.names = F), type = "l",  ylim=c(0,6000), xlim = c(0,150),col=tissueColor,xlab="individuals", ylab="Mean unique juncID across randomized indiv", main = paste0("AllTissues - All Individuals - Randomized Mean"))
+#         
+#       }
+#       else{
+#         print(mean[[tissue]])
+#         lines(unlist(mean[[tissue]], use.names = F), type = "l", col=tissueColor)
+#       }
+#       i<-i+1
+#     #}
+#     
+#   }
+#   op <- par(cex = 0.5)
+#   legend(x = 100, y = 6000, legend = tissues, lty = 1, col = tissuesColour)
+#   dev.off()
+# }
+# 
 

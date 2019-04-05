@@ -245,67 +245,67 @@ getUniqueAdjustedJunctions <- function(sourceData="allJunctions_NonSexSpecific_C
 }
 
 
-getRandomizedUniqueJunctionAdjusted <- function(sourceData="allJunctions_NonSexSpecific_Counts3_AdjustedMaximum.rda",
-                                                fileName="randomized_UniqueJunctions_NonSexSpecific_Counts3_AdjustedMaximum.rda",
-                                                saveResults = T){
-  ## READ JUNCTIONS FILE 
-  all_junctions_adjusted_GT3 <-readRDS(file = paste0("~/R/splicing_project/SplicingProject/Results/",sourceData))
-   
-
-  dataRandomizedPeople <- list()
-  for(item in 1:30){
-     
-    #Randomize people
-    people <- sample(names(all_junctions_adjusted_GT3),replace = F)
-    adjustedUniqueJunctions <- list()
-      
-    for(person in people){
-        
-        adjustedUniqueJunctions[[person]] <- list()
-        
-        
-        for(tissue in names(all_junctions_adjusted_GT3[[person]])){
-          
-          if(str_sub(tissue,-2,-2) != "_"){
-            
-            print(paste0("#################### ", person, " ########### ", tissue, " ####################"))
-            
-            #set the initial data
-            uniqueJuncIDs <- all_junctions_adjusted_GT3[[person]][[tissue]]$juncID
-            
-            adjustedUniqueJunctions[[person]][[tissue]] <- list()
-            adjustedUniqueJunctions[[person]][[tissue]][[person]] <- list(juncID = uniqueJuncIDs, percentage = 100)
-            
-            ###########################################################
-            ######## CROSS PERSON1 DATA WITH THE OTHER PEOPLE
-            ######## COMPARE RESULTS --> INTERSECTION BETWEEN BOTH
-            ###########################################################
-            
-            for(personN in people){
-              
-              if(person != personN && length(all_junctions_adjusted_GT3[[personN]][[tissue]]) > 0){
-                
-                outerLeft <- setdiff(uniqueJuncIDs,all_junctions_adjusted_GT3[[personN]][[tissue]]$juncID)
-                
-                if(length(outerLeft) > 0){
-                  uniqueJuncIDs <- outerLeft
-                  
-                  percentage <- length(uniqueJuncIDs)*100/length(all_junctions_adjusted_GT3[[person]][[tissue]]$juncID)
-                  adjustedUniqueJunctions[[person]][[tissue]][[personN]] <- list(juncID = uniqueJuncIDs, percentage = percentage)
-                  
-                }
-              }
-            }
-          }
-        }
-      }
-     dataRandomizedPeople[[item]] <- adjustedUniqueJunctions
-   }
-   if(saveResults){
-     saveRDS(dataRandomizedPeople, file = paste0("~/R/splicing_project/SplicingProject/Results/",fileName))
-     print("File saved!")
-   }
- }
-
-
-getRandomizedUniqueJunctionAdjusted()
+# getRandomizedUniqueJunctionAdjusted <- function(sourceData="allJunctions_NonSexSpecific_Counts3_AdjustedMaximum.rda",
+#                                                 fileName="randomized_UniqueJunctions_NonSexSpecific_Counts3_AdjustedMaximum.rda",
+#                                                 saveResults = T){
+#   ## READ JUNCTIONS FILE 
+#   all_junctions_adjusted_GT3 <-readRDS(file = paste0("~/R/splicing_project/SplicingProject/Results/",sourceData))
+#    
+# 
+#   dataRandomizedPeople <- list()
+#   for(item in 1:30){
+#      
+#     #Randomize people
+#     people <- sample(names(all_junctions_adjusted_GT3),replace = F)
+#     adjustedUniqueJunctions <- list()
+#       
+#     for(person in people){
+#         
+#         adjustedUniqueJunctions[[person]] <- list()
+#         
+#         
+#         for(tissue in names(all_junctions_adjusted_GT3[[person]])){
+#           
+#           if(str_sub(tissue,-2,-2) != "_"){
+#             
+#             print(paste0("#################### ", person, " ########### ", tissue, " ####################"))
+#             
+#             #set the initial data
+#             uniqueJuncIDs <- all_junctions_adjusted_GT3[[person]][[tissue]]$juncID
+#             
+#             adjustedUniqueJunctions[[person]][[tissue]] <- list()
+#             adjustedUniqueJunctions[[person]][[tissue]][[person]] <- list(juncID = uniqueJuncIDs, percentage = 100)
+#             
+#             ###########################################################
+#             ######## CROSS PERSON1 DATA WITH THE OTHER PEOPLE
+#             ######## COMPARE RESULTS --> INTERSECTION BETWEEN BOTH
+#             ###########################################################
+#             
+#             for(personN in people){
+#               
+#               if(person != personN && length(all_junctions_adjusted_GT3[[personN]][[tissue]]) > 0){
+#                 
+#                 outerLeft <- setdiff(uniqueJuncIDs,all_junctions_adjusted_GT3[[personN]][[tissue]]$juncID)
+#                 
+#                 if(length(outerLeft) > 0){
+#                   uniqueJuncIDs <- outerLeft
+#                   
+#                   percentage <- length(uniqueJuncIDs)*100/length(all_junctions_adjusted_GT3[[person]][[tissue]]$juncID)
+#                   adjustedUniqueJunctions[[person]][[tissue]][[personN]] <- list(juncID = uniqueJuncIDs, percentage = percentage)
+#                   
+#                 }
+#               }
+#             }
+#           }
+#         }
+#       }
+#      dataRandomizedPeople[[item]] <- adjustedUniqueJunctions
+#    }
+#    if(saveResults){
+#      saveRDS(dataRandomizedPeople, file = paste0("~/R/splicing_project/SplicingProject/Results/",fileName))
+#      print("File saved!")
+#    }
+#  }
+# 
+# 
+# getRandomizedUniqueJunctionAdjusted()
