@@ -185,6 +185,7 @@ library(devtools)
 
 install.packages("https://bioconductor.org/packages/release/bioc/src/contrib/DECIPHER_2.10.2.tar.gz", repos=NULL)
 
+https://omarwagih.github.io/ggseqlogo/
 
 library(DECIPHER)
 
