@@ -4,7 +4,7 @@ library("RSQLite")
 library(plotly)
 
 
-plotMeanAcrossTissuesBrainBlood <- function(data="~/R/splicing_project/SplicingProject/Results/uniqueJunctions_NonSexSpecific_Counts3_AdjustedMinimum.rda",
+plotMeanAcrossTissuesBrainBlood <- function(data="~/R/splicing_project/SplicingProject/Results/uniqueJunctions_NonSexSpecific_Counts3_Filtered_Minimum.rda",
                                             plotsFolderName = "~/R/splicing_project/SplicingProject/Results/Graphics/AllTissues/GreaterThan3/Adjusted",
                                             isMinimum = T,
                                             savePlot = T,
@@ -218,8 +218,8 @@ plotMeanAcrossTissuesBrainBlood <- function(data="~/R/splicing_project/SplicingP
 
 
 
-plotHistograms <- function(allJunctionsData="~/R/splicing_project/SplicingProject/Results/allJunctions_NonSexSpecific_Counts3_AdjustedMinimum.rda",
-                           uniqueJunctionsData="~/R/splicing_project/SplicingProject/Results/uniqueJunctions_NonSexSpecific_Counts3_AdjustedMinimum.rda",
+plotHistograms <- function(allJunctionsData="~/R/splicing_project/SplicingProject/Results/allJunctions_NonSexSpecific_Counts3_Filtered_Minimum.rda",
+                           uniqueJunctionsData="~/R/splicing_project/SplicingProject/Results/uniqueJunctions_NonSexSpecific_Counts3_Filtered_Minimum.rda",
                            folderName = "~/R/splicing_project/SplicingProject/Results/Graphics/AllTissues/GreaterThan3/Adjusted/",
                            generatePlot = T,
                            isMinimum = T,
@@ -315,6 +315,66 @@ plotHistograms <- function(allJunctionsData="~/R/splicing_project/SplicingProjec
   }
 }
 
+
+plotNormalisedUniqueness <- function(data="~/R/splicing_project/SplicingProject/Results/uniqueJunctions_NonSexSpecific_Counts3_Filtered_Minimum.rda",
+                                     plotData = T){
+  ## Load source data
+  tissueNames <- readRDS(file ="~/R/splicing_project/SplicingProject/Results/allTissuesUsed.rda")
+  uniqueAdjustedJunctions_GT3 <- readRDS(file = data)
+  
+  ## Declare variables
+  totalNonUniqueJuncIDs <- NULL
+  totalUniqueJuncIDs <- NULL
+  finalData <- list()
+  
+  for(tissue in tissueNames){
+    
+    for(person in names(uniqueAdjustedJunctions_GT3)){
+      
+      if(length(uniqueAdjustedJunctions_GT3[[person]][[tissue]]) > 0){
+        
+        ## Calculate the union between all non.unique JuncIDs
+        totalPeople <- length(uniqueAdjustedJunctions_GT3[[person]][[tissue]])
+        totalJuncIDs <- uniqueAdjustedJunctions_GT3[[person]][[tissue]][[person]]$juncID
+        uniqueJuncIDs <- uniqueAdjustedJunctions_GT3[[person]][[tissue]][[totalPeople]]$juncID
+        indexes <- match(uniqueJuncIDs, totalJuncIDs)
+        nonUniqueJuncIDs <- uniqueAdjustedJunctions_GT3[[person]][[tissue]][[person]]$juncID[-indexes]
+      
+        ## Set the unique and non.unique juncID across all individuals for the current tissue
+        totalNonUniqueJuncIDs <- union(totalNonUniqueJuncIDs,nonUniqueJuncIDs)
+        totalUniqueJuncIDs <- union(totalUniqueJuncIDs,uniqueJuncIDs)
+        
+       
+        
+      }
+    }
+    finalData[[tissue]] <- list(total=totalNonUniqueJuncIDs,unique=totalUniqueJuncIDs,percentage=(length(totalUniqueJuncIDs)*100/length(totalNonUniqueJuncIDs)))
+    totalNonUniqueJuncIDs <- NULL
+    totalUniqueJuncIDs <- NULL
+  }
+  if(plotData){
+    
+    ## Declare variables
+    percentage <- NULL
+    allUniqueJuncIDPercentage <- NULL
+    
+    ## Calculate the uniqueness percentage
+    for(tissue in names(finalData)){
+      allUniqueJuncIDPercentage <- c(allUniqueJuncIDPercentage,finalData[[tissue]]$percentage)
+    }
+   
+    ## Plot the results
+    plotData <- data.frame(names(finalData), allUniqueJuncIDPercentage)
+    
+
+    plotData<-plotData[order(plotData$allUniqueJuncIDPercentage, decreasing = T),] 
+    p <- plot_ly(plotData, x = ~names(finalData), y = ~allUniqueJuncIDPercentage, type = 'bar', name = '% Unique JuncID') %>%
+      layout(yaxis = list(title = 'mean % Unique JuncID'),xaxis = list(title = 'Tissues')) %>%
+      add_annotations(y = ~allUniqueJuncIDPercentage, text = paste0(round(x = allUniqueJuncIDPercentage,digits = 2),"%"),showarrow = T,ax=0)
+    p
+
+  }
+}
 
 # getRandomizedDataPerPersonAndTissue <- function(data="~/R/splicing_project/SplicingProject/Results/uniqueJunctions_Randomized_GT3.rda",
 #                                                     saveResults = T){

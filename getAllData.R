@@ -87,20 +87,18 @@ getAllJunctionsAndCounts <- function(numberOfCounts=1){
 
 getAllJunctionsAndCountsAdjusted <- function(sourceData="~/R/splicing_project/SplicingProject/Results/allJunctions_NonSexSpecific_Counts1.rda",
                                              saveResults = T,
-                                             isMinimum = F,
-                                             fileName = "allJunctions_NonSexSpecific_Counts1_AdjustedMaximum.rda") {
+                                             fileName = "allJunctions_NonSexSpecific_Counts1_Normalised.rda") {
   
   ## READ JUNCTIONS FILE 
   all.JunctionsCount1 <-readRDS(file = sourceData)
   
   ## declare variables
   allJunctionsCount1 <- all.JunctionsCount1$juncIDs
+  
   i<-1
   threshold <- 0
-  if(isMinimum){
-    minimumCount<-NULL
-  }else
-    maximumCount<-0
+  minimumCount<-NULL
+  maximumCount<-0
 
   
   for(person in names(allJunctionsCount1)){
@@ -112,34 +110,28 @@ getAllJunctionsAndCountsAdjusted <- function(sourceData="~/R/splicing_project/Sp
       totalCounts <- sum(allJunctionsCount1[[person]][[tissue]][[2]])
       allJunctionsCount1[[person]][[tissue]][[2]] <- allJunctionsCount1[[person]][[tissue]][[2]]/totalCounts
       
-      ## GET THE MINIMUM NUMBER OF TOTAL COUNTS 
-      if(isMinimum){
-        if(i == 1 || totalCounts < minimumCount){
-          minimumCount <- totalCounts
-          threshold <- 3/minimumCount
-          print(paste0("New minimum: ",minimumCount,". Threshold: ", threshold))
-        }
+      ## GET THE MINIMUM/MAXIMUM NUMBER OF TOTAL COUNTS 
+      if(i == 1 || totalCounts < minimumCount){
+        minimumCount <- totalCounts
+        print(paste0("New minimum: ",minimumCount))
       }
-      else{
-        if(i == 1 || maximumCount < totalCounts){
-          maximumCount <- totalCounts
-          threshold <- 3/maximumCount
-          print(paste0("New maximum: ",maximumCount,". Threshold: ", threshold))
-        }
+      if(i == 1 || maximumCount < totalCounts){
+        maximumCount <- totalCounts
+        print(paste0("New maximum: ",maximumCount))
       }
       i<-i+1
     }
   }
   if(saveResults){
-      saveRDS(object = list(juncID=allJunctionsCount1,threshold=threshold),
+      saveRDS(object = list(juncID=allJunctionsCount1,minimum=minimumCount,maximum=maximumCount),
               file = paste0("~/R/splicing_project/SplicingProject/Results/",fileName))
       print("File saved!")
   }
 }
 
-getJunctionsAndCountsAdjustedByThreshold <- function(sourceData="~/R/splicing_project/SplicingProject/Results/allJunctions_NonSexSpecific_Counts1_AdjustedMaximum.rda",
+getJunctionsAndCountsAdjustedByThreshold <- function(sourceData="~/R/splicing_project/SplicingProject/Results/allJunctions_NonSexSpecific_Counts1_Normalised.rda",
                                                      saveResults = T,
-                                                     fileName = "allJunctions_NonSexSpecific_Counts3_AdjustedMaximum.rda") {
+                                                     isMinimum = T) {
   
   
   ###########################################################
@@ -147,10 +139,21 @@ getJunctionsAndCountsAdjustedByThreshold <- function(sourceData="~/R/splicing_pr
   ###########################################################
   
   ## READ JUNCTIONS FILE 
-  all.junctions_adjusted <- readRDS(file = sourceData)
+  all.junctions_normalised <- readRDS(file = sourceData)
   
-  threshold <- all.junctions_adjusted$threshold
-  all_junctions_adjusted <- all.junctions_adjusted$juncID
+  ## DECLARE VARIABLES
+  threshold = NULL
+  fileName = NULL
+  
+  if(isMinimum){
+    threshold <- 3/all.junctions_normalised$minimum
+    fileName = "allJunctions_NonSexSpecific_Counts3_Filtered_Minimum.rda"
+  }else{
+    threshold <- 3/all.junctions_normalised$maximum
+    fileName = "allJunctions_NonSexSpecific_Counts3_Filtered_Maximum.rda"
+  }
+  
+  all_junctions_adjusted <- all.junctions_normalised$juncID
  
   
   ## START LOOPING
@@ -164,12 +167,11 @@ getJunctionsAndCountsAdjustedByThreshold <- function(sourceData="~/R/splicing_pr
       #only first tissue samples
       if(str_sub(tissue,-2,-2) != "_"){
         
-        #print(paste0("#################### ", person, " ########### ", tissue, " ####################"))
-        
         #get all junctions which have more than three adjusted counts
         indexAdjustedJunctionsCounts_GreaterThan3 <- which(all_junctions_adjusted[[person]][[tissue]]$number >= threshold)
-        print(length(indexAdjustedJunctionsCounts_GreaterThan3))
+       
         if(length(indexAdjustedJunctionsCounts_GreaterThan3) > 0){
+          print(paste0("#################### ", person, " ########### ", tissue, " #################### ", length(indexAdjustedJunctionsCounts_GreaterThan3)))
           #save results
           tissuesToSave[[tissue]] <- list(juncID=all_junctions_adjusted[[person]][[tissue]]$juncID[indexAdjustedJunctionsCounts_GreaterThan3],
                                           counts=all_junctions_adjusted[[person]][[tissue]]$number[indexAdjustedJunctionsCounts_GreaterThan3])
@@ -188,8 +190,8 @@ getJunctionsAndCountsAdjustedByThreshold <- function(sourceData="~/R/splicing_pr
   }
 }
 
-getUniqueAdjustedJunctions <- function(sourceData="allJunctions_NonSexSpecific_Counts3_AdjustedMinimum.rda",
-                                       fileName="uniqueJunctions_NonSexSpecific_Counts3_AdjustedMinimum.rda",
+getUniqueAdjustedJunctions <- function(sourceData="allJunctions_NonSexSpecific_Counts3_Filtered_Minimum.rda",
+                                       fileName="uniqueJunctions_NonSexSpecific_Counts3_Filtered_Minimum.rda",
                                        saveResults = T){
   
   ## READ JUNCTIONS FILE 
@@ -307,5 +309,6 @@ getUniqueAdjustedJunctions <- function(sourceData="allJunctions_NonSexSpecific_C
 #    }
 #  }
 # 
-# 
-# getRandomizedUniqueJunctionAdjusted()
+
+getUniqueAdjustedJunctions(sourceData="allJunctions_NonSexSpecific_Counts3_Filtered_Maximum.rda",
+                           fileName="uniqueJunctions_NonSexSpecific_Counts3_Filtered_Maximum.rda")
