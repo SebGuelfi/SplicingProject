@@ -57,6 +57,15 @@ plot(head(freq.wholeBlood,500000),log2(head(mean.wholeBlood,500000)),
      main="Frequency VS mean counts in Whole Blood")
 
 
+plot(head(freq.frontal,500000),log2(head(mean.frontal,500000)),
+     xlab="% splice junction \n frequency across individuals",ylab = "log2(mean counts)",col=alpha("#FFD700", 0.01),
+     main="Frequency VS mean counts")
+
+points(head(freq.wholeBlood,500000),log2(head(mean.wholeBlood,500000)),
+     xlab="% splice junction \n frequency across individuals",ylab = "log2(mean counts)",col=alpha("blue", 0.01),
+     main="Frequency VS mean counts")
+
+legend("topleft",legend = c("Frontal cortex","Whole Blood"),col = c("#FFD700","blue"),fill=c("#FFD700","blue"))
 cor(freq.wholeBlood,log2(mean.wholeBlood))
 
 
@@ -82,67 +91,236 @@ all_data$tissueIndividuals <- sapply(names(all_data$tissueIndividuals),function(
   return(tmp)
 })
 
-all_data$tissueIndividuals[[tissue]]
+  tmp_unique <- list()
+  for(tissue in names(all_data$tissueIndividuals)){
+    print(tissue)
+    tmp <- list()
+    for(i in 1:length(all_data$tissueIndividuals[[tissue]]))
+          {
+           print(i)
+           
+           all_other <- lapply(all_data$juncIDs_person_tissue[all_data$tissueIndividuals[[tissue]][-i]],function(x){
+             return(x[[tissue]])
+           })
+           
+           tmp[[all_data$tissueIndividuals[[tissue]][i]]] <- Reduce(setdiff,
+                                                                    c(all_data$juncIDs_person_tissue[[all_data$tissueIndividuals[[tissue]][i]]][tissue],
+                                                                      all_other))
+         }
+    tmp_unique[[tissue]] <- tmp
+    rm(tmp)
+    
+  }
 
-all_data$juncIDs_person_tissue$`GTEX-QMR6`$`Brain-Hippocampus`
+all_data$tissueIndividuals <- tmp_unique
+rm(tmp_unique)
 
-all_data$juncIDs_person_tissue[[c("GTEX-QMR6")]][tissue]
+tmp <- list()
+for (tissue in names(all_data$tissueIndividuals))
+{
+  for(j in names(all_data$tissueIndividuals[[tissue]]))
+  {
+    tmp[[tissue]][[j]] <- length(all_data$tissueIndividuals[[tissue]][[j]])/length(all_data$juncIDs_person_tissue[[j]][[tissue]]) 
+  }
+}
 
 
-lapply(all_data$juncIDs_person_tissue[all_data$tissueIndividuals[[tissue]][-i]],function()
+all_data$proportionUnique <- tmp
+
+save(all_data, file="/home/sguelfi/projects/R/SplicingProject/data/JunctionsGreaterThan1UniqueSplitReadPerSample.rda")
+
+color_code <- names(all_data$proportionUnique)
+names(color_code) <- names(all_data$proportionUnique)
+color_code[1:length(color_code)] <- "grey"
+color_code[grep("Brain",names(color_code))] <- "yellow"
+
+par(mar=c(12,4,2,2))
+
+ordered_unique <- sort(unlist(lapply(all_data$proportionUnique,mean)),decreasing = T)
+
+
+boxplot(all_data$proportionUnique[names(ordered_unique)],las=2,col = color_code[names(ordered_unique)],main="Proportion of uniqueness",
+        ylab="Proportion of unique junctions per sample")
 
 
 
-all_data$tissueIndividuals[[tissue]]
+library(RSQLite)
+database_path="/data/splicing_tolerance/splicing_tolerance.sqlite"
+db <-  dbConnect(SQLite(), dbname=database_path)
+res <- dbSendQuery(db, paste0("SELECT age,mapped_read_count,smtsd,subj_id,sample_recount_id  FROM GTEX_info WHERE smafrze=='USE ME'"))
 
-head(all_data$juncIDs_person_tissue[all_data$tissueIndividuals[[tissue]]])[tmp_ind])
+GTEx <- dbFetch(res)
+head(GTEx)
 
-tissue <- "Brain-Hippocampus"
-     sapply(names(all_data$tissueIndividuals),function(tissue){
-       print(tissue)
-       tmp <- list() 
-       
-       for(i in length(all_data$tissueIndividuals[[tissue]]))
-       {
-         
-         tmp_ind <- c(all_data$tissueIndividuals[[tissue]][i],all_data$tissueIndividuals[[tissue]][-i])
-         tmp[[all_data$tissueIndividuals[[tissue]][i]]] <- Reduce(setdiff,all_data$juncIDs_person_tissue[all_data$tissueIndividuals[[tissue]]][tmp_ind])
-       }
-       return(tmp)
-     })
+mean_mapped <- GTEx %>% group_by(smtsd) %>% summarize(mean_size = mean(mapped_read_count, na.rm = TRUE))
+GTEx$age <- as.numeric(as.factor(GTEx$age))
+mean_age <- GTEx %>% group_by(smtsd) %>% summarize(mean_age = mean(age, na.rm = TRUE))
+
+mean_mapped$smtsd <- gsub('\\(','_',mean_mapped$smtsd)
+mean_mapped$smtsd <- gsub('\\)','',mean_mapped$smtsd)
+mean_mapped$smtsd <- gsub(" ","",mean_mapped$smtsd)
+
+mean_proportion_unique <- unlist(lapply(all_data$proportionUnique,mean))
+
+mean_mapped <- mean_mapped %>% filter(smtsd %in% names(mean_proportion_unique))
+
+par(mar=c(4,4,2,2))
+color_code[color_code == "grey"] <- "black"
+color_code[color_code == "yellow"] <- "#FFD700"
+plot(mean_mapped$mean_size,mean_proportion_unique[gsub(" ","",mean_mapped$smtsd)],pch=16,
+     xlab="Mean mapped reads", ylab="Proportion of splicing uniqueness",col=color_code[names(mean_proportion_unique)])
+cor.test(mean_mapped$mean_size,mean_proportion_unique[gsub(" ","",mean_mapped$smtsd)])
+
+
+plot(mean_age$mean_age,mean_proportion_unique[gsub(" ","",mean_age$smtsd)],
+     xlab="Mean age", ylab="Proportion of splicing uniqueness",xaxt="n",
+     col=color_code[names(mean_proportion_unique)],pch=16)
+axis(1, at=1:6, labels=c("20-29", "30-39", "40-49","50-59", "60-69" ,"70-79"))
+cor.test(mean_age$mean_age,mean_proportion_unique[gsub(" ","",mean_age$smtsd)])
+
+
+
+
+##############################################################################################################
+### Obtain the proportion of unique splice junctions that an individual expresses in all the brain tissues ###
+##############################################################################################################
+
+Proportion_personalised_splicing <- list()
+numb_personal_spicing <- list()
+prop_personal_spicing_at_least_one <- list()
+
+for(x in names(all_data$juncIDs_person_tissue))
+{
+  tmp <- all_data$juncIDs_person_tissue[[x]]
+  if(length(tmp)>5)
+  {
+    tmp_per_ind <- lapply(all_data$tissueIndividuals[names(tmp)],function(y)
+    {
+      return(y[[x]])
+    })
+    Proportion_personalised_splicing[x] <- length(Reduce(intersect, tmp_per_ind ))/length(Reduce(union, tmp_per_ind ))
+    numb_personal_spicing[x] <- length(Reduce(intersect, tmp_per_ind ))
+    prop_personal_spicing_at_least_one[x] <- sum(table(unlist(tmp_per_ind))>1)/length(unique(unlist(tmp_per_ind)))
+  }
+  
+}
+    
+
+#######################################
+## Get the correlation variance-age ###
+#######################################
+
+par(mar=c(4,4,2,2))
+hist(unlist(prop_personal_spicing_at_least_one)*100,breaks=100,main="Percentage of personal splicing",
+     xlab = "% of personal splicing")
+
+unlist(prop_personal_spicing_at_least_one)[unlist(prop_personal_spicing_at_least_one)>0.05]
+
+numTissuePerSample <- lapply(all_data$juncIDs_person_tissue,function(x){
+  return(length(x))
+})
+
+plot((unlist(prop_personal_spicing_at_least_one)*100),
+     unlist(numTissuePerSample[names(unlist(prop_personal_spicing_at_least_one))]),
+     xlab="% of personal splicing",ylab=" Number of samples per individual")
+cor((unlist(prop_personal_spicing_at_least_one)*100),
+    unlist(numTissuePerSample[names(unlist(prop_personal_spicing_at_least_one))]))
+
+
+library(RSQLite)
+database_path="/data/splicing_tolerance/splicing_tolerance.sqlite"
+db <-  dbConnect(SQLite(), dbname=database_path)
+res <- dbSendQuery(db, paste0("SELECT age,mapped_read_count,smtsd,subj_id,sample_recount_id  FROM GTEX_info WHERE smafrze=='USE ME'"))
+
+GTEx <- dbFetch(res)
+head(GTEx)
+
+tmp <- as.data.frame(unlist(prop_personal_spicing_at_least_one)) %>% rownames_to_column("subj_id")
+
+tmp_2 <- GTEx %>% filter(!duplicated(subj_id)) %>% select(age,subj_id) %>% 
+  inner_join(tmp)
+
+plot(factor(tmp_2[,1]),as.numeric(tmp_2[,3]*100),
+     ylab="% of personal splicing", xlab="Age ranges")
+
+abline(h=-log10(0.05),col="red")
+
+cor.test(as.numeric(factor(tmp_2[,1])),as.numeric(tmp_2[,3]*100))
+GTEx$age_num <- as.numeric(factor(GTEx$age))
+
+#######################################
+## Get the correlation variance-age ###
+#######################################
+
+
+cor_per_tissue <- lapply(all_data$proportionUnique,function(x)
+{
+  tmp <- as.data.frame(unlist(x)) %>% rownames_to_column("subj_id")
+  tmp_2 <- GTEx %>% filter(!duplicated(subj_id)) %>% select(age_num,subj_id) %>% 
+   inner_join(tmp)
+  return(cor.test(as.numeric(factor(tmp_2[,1])),as.numeric(tmp_2[,3]*100)))
+})
+
+
+## correlation
+tmp <- lapply(cor_per_tissue, function(x){
+  x$estimate
+})
+
+tmp_2 <- sort(unlist(tmp),decreasing = T)
+color_code <- c()
+color_code[1:length(tmp_2)] <- "grey"
+names(color_code) <- names(tmp_2)
+color_code[grep("Brain",names(color_code))] <- "yellow"
+
+par(mar=c(12,4,2,2))
+
+names(tmp_2) <- gsub(".cor", "",names(tmp_2))
+barplot(tmp_2,las=2,ylim = c(-0.30,0.30),col=color_code,ylab="Correlation")
+
+
+## p-value 
+
+tmp <- lapply(cor_per_tissue, function(x){
+  x$p.value
+})
+
+tmp_2 <- sort(-log10(unlist(tmp)),decreasing = T)
+color_code <- c()
+color_code[1:length(tmp_2)] <- "grey"
+names(color_code) <- names(tmp_2)
+color_code[grep("Brain",names(color_code))] <- "yellow"
+
+par(mar=c(12,4,2,2))
+
+names(tmp_2) <- gsub(".cor", "",names(tmp_2))
+barplot(tmp_2,las=2,col=color_code,ylab="-log10(p.value)")
+abline(h=-log10(0.05),col="red")
+
+
+tmp_SG <- GTEx %>% mutate(age_num = age %>% str_extract("^..") %>% as.integer()) %>% 
+  group_by(smtsd) %>% 
+  summarise(age_num_mean = mean(age_num), 
+            age_num_sd = var(age_num))
+view()
+
+head(GTEx)
+  
+#######################################
+## Get the correlation variance-age ###
+#######################################
+
+
+all_data <- readRDS("/home/sruiz/R/splicing_project/SplicingProject/Results/nonSexSpecificJunctionsGreaterThan1.rda.rda")
      
+length(all_data$juncIDs_person_tissue$`GTEX-POMQ`)
      
-     all_data$juncIDs_person_tissue[[all_data$tissueIndividuals[[tissue]]]]
-     map2
-     
-     
-     all_data$juncIDs_person_tissue[[c("GTEX-QMR6","GTEX-OHPN")]]
-     
-     Reduce(union, all_data$samplesID_person)
-     
-     
-     dat1 <- c("osa", "bli", "usd", "mnl")
-     dat2 <- c("mnu", "erd", "usd", "mnl")
-     dat3 <- c("ssu", "erd", "usd", "mnl")
-     
-     diffs <- Reduce(setdiff,list(A = dat1,B = dat2, C = dat3))
-     
-     
-     #######################################
-     ## Get the correlation variance-age ###
-     #######################################
-     
-     
-     all_data <- readRDS("/home/sruiz/R/splicing_project/SplicingProject/Results/nonSexSpecificJunctionsGreaterThan1.rda.rda")
-     
-     length(all_data$juncIDs_person_tissue$`GTEX-POMQ`)
-     
-     Proportion_personalised_splicing <- lapply(all_data$juncIDs_person_tissue,function(x){
+Proportion_personalised_splicing <- lapply(all_data$juncIDs_person_tissue,function(x){
        if(length(grep("Brain",names(x)))>5)
        {
          tmp_only_brain <- x[grep("Brain",names(x))]
          return(length(Reduce(intersect, tmp_only_brain))/length(Reduce(union, tmp_only_brain)))
        }
-     })
+ })
      
      

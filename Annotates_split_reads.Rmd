@@ -1,0 +1,52 @@
+---
+title: "Split_read_annotation"
+author: "Sebastian Guelfi"
+date: "4/9/2019"
+output: html_document
+---
+
+
+
+This document explains the output of the split read annotation function from annotatER.
+Split reads identified in GTEx were annotated using the ENSEMBL database
+
+The split read annotation can be found at this location
+
+/home/sguelfi/projects/R/splicing_tolerance/ensembl_annotated_split_reads.rda
+
+## Column Description
+
+**chr**: chromosome location of the split read
+
+**start**: absolute start location of the split read
+
+**stop**: absolute stop location of the split read
+
+**annotation**: Annotation from ucsc
+
+**strand**: stran of the junction
+
+**junID**: split read ID
+
+**acceptor**: If acceptor location is annotated the transcript ID will be display
+
+**donor**: If donor location is annotated the transcript ID will be display
+
+**junction**: If junction location is annotated the transcript ID will be display
+
+**precBoundDonor**: binary value that provides information whether boundaries match exactly the donor
+
+**precBoundAcceptor**: binary value that provides information whether boundaries match exactly acceptor
+
+
+**Note**: Donor/acceptor location are given by the combination of strand start/stop locations 
+
+```{r annotated_split_reads example, echo=FALSE}
+
+library(knitr)
+load("/home/sguelfi/projects/R/tmp/annotation_example.rda")
+tail_tmp <- tail(tmp_annotation)
+kable(tail_tmp, caption="annotated_split_reads",row.names = F)
+
+
+```
